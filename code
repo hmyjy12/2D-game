@@ -1,0 +1,959 @@
+// Unity Academy 2D Game 
+
+// A and D: Walk left and right
+// W: Jump
+
+import {adsr, bell, cello, consecutively, get_duration, 
+        init_record, is_sound, letter_name_to_midi_note, 
+        make_sound, noise_sound, phase_mod, piano, play, 
+        simultaneously, sine_sound, silence_sound, trombone, violin
+       } from 'sound';
+
+import {init_unity_academy_3d, init_unity_academy_2d, set_start, 
+        set_update, instantiate, delta_time, instantiate_sprite, 
+        same_gameobject, destroy, translate_world,get_key_down, 
+        get_key, get_key_up, get_position, copy_position, set_position, 
+        get_rotation_euler, set_rotation_euler, rotate_world, get_scale, 
+        set_scale, play_animator_state, add_impulse_force, apply_rigidbody, 
+        get_angular_velocity, get_mass, get_velocity, set_angular_velocity, 
+        set_mass, set_use_gravity ,set_velocity, debug_log, on_collision_enter, 
+        on_collision_stay, on_collision_exit, get_main_camera_following_target, 
+        vector3, get_x, get_y, vector_difference,remove_collider_components
+       } from "unity_academy";
+
+// Music Module
+const C4 = violin(60, 0.2); 
+const D4 = violin(62, 0.2);
+const E4 = violin(64, 0.2); 
+const F4 = violin(65, 0.2);
+const G4 = violin(67, 0.2);
+const A4 = violin(69, 0.2);
+const B4 = violin(71, 0.2);
+const C5 = violin(72, 0.2);
+const D5 = violin(74, 0.2);
+const E5 = violin(76, 0.6);
+const C6 = violin(84, 0.2);
+const G5 = violin(79, 0.2);
+
+const C4_short = violin(60, 0.15);
+const D4_short = violin(62, 0.15);
+const E4_short = violin(64, 0.15);
+const F4_short = violin(65, 0.15);
+const G4_short = violin(67, 0.15);
+const A4_short = violin(69, 0.15);
+
+const E4_grace = violin(64, 0.05);
+const F4_grace = violin(65, 0.05);
+const G4_grace = violin(67, 0.05);
+
+const attack_ratio = 0.1;
+const decay_ratio = 0.2;
+const sustain_level = 0.6;
+const release_ratio = 0.1;
+const envelope = adsr(attack_ratio, decay_ratio, sustain_level, release_ratio);
+
+// Defining melody notes and durations
+const melody1 = list(
+  piano(letter_name_to_midi_note("C4"), 0.5),
+  piano(letter_name_to_midi_note("E4"), 0.5),
+  piano(letter_name_to_midi_note("G4"), 0.5),
+  piano(letter_name_to_midi_note("B4"), 0.5),
+  piano(letter_name_to_midi_note("C5"), 0.5)
+);
+
+const melody2 = list(
+  violin(letter_name_to_midi_note("E4"), 1),
+  violin(letter_name_to_midi_note("G4"), 1),
+  violin(letter_name_to_midi_note("B4"), 1),
+  violin(letter_name_to_midi_note("C5"), 1)
+);
+
+const background1 = list(
+  cello(letter_name_to_midi_note("C2"), 1),
+  cello(letter_name_to_midi_note("G2"), 1),
+  cello(letter_name_to_midi_note("C3"), 1)
+);
+
+const background2 = list(
+  bell(letter_name_to_midi_note("C5"), 0.5),
+  bell(letter_name_to_midi_note("E5"), 0.5),
+  bell(letter_name_to_midi_note("G5"), 0.5),
+  bell(letter_name_to_midi_note("C6"), 0.5)
+);
+
+const background3 = list(
+  bell(letter_name_to_midi_note("C5"), 0.5),
+  bell(letter_name_to_midi_note("E5"), 0.5),
+  bell(letter_name_to_midi_note("G5"), 0.5),
+  bell(letter_name_to_midi_note("C6"), 0.8)
+);
+
+
+const enveloped_melody1 = map(note => envelope(note),melody1);
+const enveloped_melody2 = map(note => envelope(note), melody2);
+const enveloped_background1 = map(note => envelope(note),background1);
+const enveloped_background2 = map(note => envelope(note),background2);
+const enveloped_background3 = map(note => envelope(note),background3);
+
+// Simultaneous music playback
+const play_same_time = simultaneously(
+                           list(consecutively(enveloped_melody1), 
+                                consecutively(enveloped_background1), 
+                                consecutively(enveloped_melody2), 
+                                consecutively(enveloped_background2))
+                           );
+
+// Continuous music playback
+const connect = consecutively(accumulate(append, null,list(enveloped_melody1, enveloped_background3)));
+
+// Play music
+play(consecutively(list(play_same_time,connect)));
+
+
+init_unity_academy_2d();
+
+// Load custom sprite from URL (Need CORS Cross-Domain header)
+const mario1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/monster.png");
+const mario2 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/monster2.png");
+const door_begin = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/door.png");
+const door_end = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/door.png");
+const champion = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/Champion.png");
+
+const wall1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/wall_left1.png");
+const wall2 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/wall_left1.png");
+const ground = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/wall_ceiling.png");
+const ceiling = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/wall_ceiling.png");
+const background = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/cartoonbackground.png");
+
+const barrier1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/barrier.png");
+
+const g1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g2 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g3 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g4 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g5 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g6 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g7 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g8 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g9 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g10 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g11 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g12 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g13 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g14 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g15 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g16 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g17 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g18 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g19 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g20 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g21 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g22 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g23 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g24 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g25 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g26 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g27 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g28 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g29 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g30 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g31 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g32 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g33 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g34 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g35 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g36 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g37 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g38 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g39 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+const g40 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/three_walls.png");
+
+const mystery_box1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise.png");
+const mystery_box2 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise.png");
+const mystery_box3 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise2.jpg");
+const mystery_box4 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise2.jpg");
+const mystery_box5 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise.png");
+const mystery_box6 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise.png");
+const mystery_box7 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise2.jpg");
+const mystery_box8 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/surprise2.jpg");
+
+
+function start_player1(gameObject){
+    set_position(gameObject, vector3(4.5, 1.75, 0));
+    set_scale(gameObject, vector3(0.14, 0.14, 1));
+    apply_rigidbody(gameObject);
+}
+function start_player2(gameObject){
+    set_position(gameObject, vector3(4.5, 1.75, 0));
+    set_scale(gameObject, vector3(0.11, 0.11, 1));
+    apply_rigidbody(gameObject);
+}
+
+const start_champion = (gameObject) =>{
+        set_position(champion,vector3(-20,-20,0));
+};
+
+const start_door_begin = (gameObject) => {
+    set_position(gameObject, vector3(4,1.75,0));
+    set_scale(gameObject, vector3(0.3, 0.3, 1));
+};
+
+const start_door_end = (gameObject) => {
+    set_position(gameObject, vector3(5.5,4.5,0));
+    set_scale(gameObject, vector3(0.3, 0.3, 1));
+    apply_rigidbody(gameObject);
+};
+
+const start_barrier1 = (gameObject) => {
+    set_position(gameObject,  vector3(5, -1.9, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.05, 0.055, 1));
+};
+
+const start_wall1 = (gameObject) => {
+    set_position(gameObject, vector3(-4.9, 2, 0));
+    set_scale(gameObject, vector3(0.05, 0.058, 1));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+};
+
+const start_wall2 = (gameObject) => {
+    set_position(gameObject,  vector3(7.35, 2, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.05, 0.058, 1));
+};
+
+const start_ground = (gameObject) => {
+    set_position(gameObject, vector3(1.2, -2.1, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.12, 0.05, 1));
+};
+
+const start_ceiling = (gameObject) => {
+    set_position(gameObject,  vector3(1.2, 5.9, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.12, 0.05, 1));
+};
+
+const start_background = (gameObject) =>{
+    set_position(gameObject,  vector3(1.2, 2, 1));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.25, 0.23, 1));
+};
+
+remove_collider_components(background);
+
+
+const start_g1 = (gameObject) => {
+    set_position(gameObject,  vector3(-4.3, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g2 = (gameObject) => {
+    set_position(gameObject,  vector3(5, 5.3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g3 = (gameObject) =>{
+    set_position(gameObject,  vector3(5, 4.3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g4 = (gameObject) => {
+    set_position(gameObject,  vector3(-3.5, -0.9, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g5 = (gameObject) => {
+    set_position(gameObject,  vector3(-2.5, -0.9, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g6 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1.9, -0.55, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g7 = (gameObject) => {
+    set_position(gameObject,  vector3(-1.9, 0.45, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g8 = (gameObject) => {
+    set_position(gameObject,  vector3(-3.5, 0.75, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g9 = (gameObject) =>{
+    set_position(gameObject,  vector3(-2.5, 0.75, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g10 = (gameObject) => {
+    set_position(gameObject,  vector3(-4, 0.42, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g11 = (gameObject) => {
+    set_position(gameObject,  vector3(-2.6, 1.2, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g12 = (gameObject) =>{
+    set_position(gameObject,  vector3(-2.6, 2.2, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g13 = (gameObject) =>{
+    set_position(gameObject,  vector3(1.85, 0.75, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g14 = (gameObject) =>{
+    set_position(gameObject,  vector3(1.85, -0.25, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g15 = (gameObject) => {
+    set_position(gameObject,  vector3(1.85, -1.25, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g16 = (gameObject) => {
+    set_position(gameObject,  vector3(6.8, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g17 = (gameObject) => {
+    set_position(gameObject,  vector3(5.8, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g18 = (gameObject) =>{
+    set_position(gameObject,  vector3(4.9, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g19 = (gameObject) => {
+    set_position(gameObject,  vector3(3.9, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g20 = (gameObject) => {
+    set_position(gameObject,  vector3(2.9, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g21 = (gameObject) =>{
+    set_position(gameObject,  vector3(1.9, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g22 = (gameObject) => {
+    set_position(gameObject,  vector3(1, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g23 = (gameObject) => {
+    set_position(gameObject,  vector3(0.1, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g24 = (gameObject) =>{
+    set_position(gameObject,  vector3(3.3, 2, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g25 = (gameObject) =>{
+    set_position(gameObject,  vector3(3.3, 1, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g26 = (gameObject) => {
+    set_position(gameObject,  vector3(3.3, 0, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g27 = (gameObject) =>{
+    set_position(gameObject,  vector3(4, 1.3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g28 = (gameObject) => {
+    set_position(gameObject,  vector3(5, 1.3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g29 = (gameObject) => {
+    set_position(gameObject,  vector3(-0.9, 2.6, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g30 = (gameObject) =>{
+    set_position(gameObject,  vector3(-2.0, 4.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g31 = (gameObject) => {
+    set_position(gameObject,  vector3(-1.0, 4.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g32 = (gameObject) => {
+    set_position(gameObject,  vector3(0, 4.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g33 = (gameObject) =>{
+    set_position(gameObject,  vector3(1, 4.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g34 = (gameObject) =>{
+    set_position(gameObject,  vector3(1.3, 4, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g35 = (gameObject) =>{
+    set_position(gameObject,  vector3(0, 3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g36 = (gameObject) => {
+    set_position(gameObject,  vector3(0, 2.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g37 = (gameObject) => {
+    set_position(gameObject,  vector3(0, 1.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g38 = (gameObject) =>{
+    set_position(gameObject,  vector3(0, 0.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g39 = (gameObject) =>{
+    set_position(gameObject,  vector3(0, -0.5, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 90));
+    set_scale(gameObject, vector3(0.2, 0.2, 1));
+};
+
+const start_g40 = (gameObject) =>{
+    set_position(gameObject,  vector3(5.5, 4.3, 0));
+    set_rotation_euler(gameObject,  vector3(0, 0, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+
+const start_mystery_box1 = (gameObject) =>{
+    set_position(gameObject,  vector3(6, -1, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box2 = (gameObject) =>{
+    set_position(gameObject,  vector3(2.95, 2, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box3 = (gameObject) =>{
+    set_position(gameObject,  vector3(2.2, 0, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box4 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 1, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box5 = (gameObject) =>{
+    set_position(gameObject,  vector3(-3.5, 1.5, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box6 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 4, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box7 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 5, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_mystery_box8 = (gameObject) =>{
+    set_position(gameObject,  vector3(4, 3, 0));
+    set_scale(gameObject, vector3(0.15, 0.15, 1));
+};
+
+const start_ball1 = (gameObject) =>{
+    set_position(gameObject,  vector3(6, -1, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball1 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario1));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball2 = (gameObject) =>{
+    set_position(gameObject,  vector3(3.5, 2, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball2 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario1));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball3 = (gameObject) =>{
+    set_position(gameObject,  vector3(2, 0, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball3 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball4 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 1, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball4 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), 
+                                                  get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the mushroom chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball5 = (gameObject) =>{
+    set_position(gameObject,  vector3(-3.5, 1.5, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball5 = (gameObject) =>{
+    
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball6 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 4, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball6 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), 
+                                                  get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball7 = (gameObject) =>{
+    set_position(gameObject,  vector3(-1, 5, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball7 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+const start_ball8 = (gameObject) =>{
+    set_position(gameObject,  vector3(4, 3, 0));
+    apply_rigidbody(gameObject);
+};
+
+const update_ball8 = (gameObject) =>{
+    const position_difference = vector_difference(get_position(gameObject), get_position(mario2));
+    const deltaX = get_x(position_difference);
+    const deltaY = get_y(position_difference);
+    
+    // Let the ball chase the player
+    if (deltaX > 0) {
+        translate_world(gameObject, vector3(-delta_time(), 0, 0));
+    } else {
+        translate_world(gameObject, vector3(delta_time(), 0, 0));
+    }
+    
+    if (deltaY < -0.1 && math_abs(get_y(get_velocity(gameObject))) <= 0.05) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+    
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+};
+
+function update_player1(gameObject){
+    
+    const moveSpeed = 3;
+    
+    // Player: move and jump
+    if (get_key("A")) {
+        translate_world(gameObject, vector3(-delta_time() * moveSpeed, 0, 0));
+    }
+    
+    if (get_key("D")) {
+        translate_world(gameObject, vector3(delta_time() * moveSpeed, 0, 0));
+    }
+    
+    if (get_key("W") && math_abs(get_y(get_velocity(gameObject))) <= 0.5) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+}
+
+
+function update_player2(gameObject){
+    
+    const moveSpeed = 3;
+    
+    // Player: move and jump
+    if (get_key("J")) {
+        translate_world(gameObject, vector3(-delta_time() * moveSpeed, 0, 0));
+    }
+    
+    if (get_key("L")) {
+        translate_world(gameObject, vector3(delta_time() * moveSpeed, 0, 0));
+    }
+    
+    if (get_key("I") && math_abs(get_y(get_velocity(gameObject))) <= 0.5) {
+        add_impulse_force(gameObject, vector3(0, 5, 0));
+    }
+
+    set_rotation_euler(gameObject, vector3(0, 0, 0));
+}
+
+let ball1 = null;
+let ball2 = null;
+let ball3 = null;
+let ball4 = null;
+let ball5 = null;
+let ball6 = null;
+let ball7 = null;
+let ball8 = null;
+
+
+function marioOnCollisionEnter(self, other){
+    debug_log("marioOnCollisionEnter");
+    if (same_gameobject(other, mystery_box1) && is_null(ball1)) {
+        ball1 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball1.png");
+        set_scale(ball1, vector3(0.1, 0.1, 1));
+        set_start(ball1, start_ball1);
+        set_update(ball1, update_ball1);
+    }
+    
+    if (same_gameobject(other, ball1)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball1);
+        ball1 = null;
+    }
+    
+    if (same_gameobject(other, mystery_box2) && is_null(ball2)) {
+        ball2 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball2.png");
+        set_scale(ball2, vector3(0.1, 0.1, 1));
+        set_start(ball2, start_ball2);
+        set_update(ball2, update_ball2);
+    }
+    
+    if (same_gameobject(other, ball2)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball2);
+        ball2 = null;
+    }
+    
+    if (same_gameobject(other, mystery_box3) && is_null(ball3)) {
+        ball3 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball3.png");
+        set_scale(ball3, vector3(0.1, 0.1, 1));
+        set_start(ball3, start_ball3);
+        set_update(ball3, update_ball3);
+    }    
+    
+    if (same_gameobject(other, ball3)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball3);
+        ball3 = null;
+    } 
+    
+    // When player touches the mystery box, spawn the mushroom above the box
+    if (same_gameobject(other, mystery_box4) && is_null(ball4)) {
+        ball4 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball4.png");
+        set_scale(ball4, vector3(0.1, 0.1, 1));
+        set_start(ball4, start_ball4);
+        set_update(ball4, update_ball4);
+    }
+    
+    // When player touches the mushroom, remove the mushroom and send player back to the start position
+    if (same_gameobject(other, ball4)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball4);
+        ball4 = null;
+    }
+    
+    if (same_gameobject(other, mystery_box5) && is_null(ball5)) {
+        ball5 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball3.png");
+        set_scale(ball5, vector3(0.1, 0.1, 1));
+        set_start(ball5, start_ball5);
+        set_update(ball5, update_ball5);
+    }        
+    
+    if (same_gameobject(other, ball5)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball5);
+        ball5 = null;
+    }  
+    
+    if (same_gameobject(other, mystery_box6) && is_null(ball6)) {
+        ball6 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball3.png");
+        set_scale(ball6, vector3(0.1, 0.1, 1));
+        set_start(ball6, start_ball6);
+        set_update(ball6, update_ball6);
+    } 
+    
+    if (same_gameobject(other, ball6)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball6);
+        ball6 = null;
+    }  
+    
+    if (same_gameobject(other, mystery_box7) && is_null(ball7)) {
+        ball7 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball3.png");
+        set_scale(ball7, vector3(0.1, 0.1, 1));
+        set_start(ball7, start_ball7);
+        set_update(ball7, update_ball7);
+    } 
+    
+    if (same_gameobject(other, ball7)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball7);
+        ball7 = null;
+    }  
+    
+    if (same_gameobject(other, mystery_box8) && is_null(ball8)) {
+        ball8 = instantiate_sprite("https://raw.githubusercontent.com/hmyjy12/2D-game/main/ball3.png");
+        set_scale(ball8, vector3(0.1, 0.1, 1));
+        set_start(ball8, start_ball8);
+        set_update(ball8, update_ball8);
+    } 
+    
+    if (same_gameobject(other, ball8)) {
+        set_position(self, vector3(4.5, 1.75, 0));
+        destroy(ball8);
+        ball8 = null;
+    } 
+    
+    if (same_gameobject(other, barrier1)) {
+      set_position(self, vector3(4.5, 1.75, 0));
+    }
+    
+    if (same_gameobject(other,door_end)) {
+        //弹出奖杯
+        set_position(champion,vector3(6.5,3.05,-1));
+        
+        //播放胜利音乐
+        const melody = list(
+        E4, C4_short, E4_short, G4_grace, G4_short, A4_short, G4_short, 
+        E4, C4_short, E4, G4_short, C5, D5, E5);
+        play(consecutively(melody));
+    }
+}
+
+set_start(champion,start_champion);
+set_start(ground, start_ground);
+set_start(ceiling, start_ceiling);
+set_start(door_begin, start_door_begin);
+set_start(door_end, start_door_end);
+set_start(wall1, start_wall1);
+set_start(wall2, start_wall2);
+set_start(background,start_background);
+
+set_start(g1, start_g1);
+set_start(g2, start_g2);
+set_start(g3, start_g3);
+set_start(g4, start_g4);
+set_start(g5, start_g5);
+set_start(g6, start_g6);
+set_start(g7, start_g7);
+set_start(g8, start_g8);
+set_start(g9, start_g9);
+set_start(g10, start_g10);
+set_start(g11, start_g11);
+set_start(g12, start_g12);
+set_start(g13, start_g13);
+set_start(g14, start_g14);
+set_start(g15, start_g15);
+set_start(g16, start_g16);
+set_start(g17, start_g17);
+set_start(g18, start_g18);
+set_start(g19, start_g19);
+set_start(g20, start_g20);
+set_start(g21, start_g21);
+set_start(g22, start_g22);
+set_start(g23, start_g23);
+set_start(g24, start_g24);
+set_start(g25, start_g25);
+set_start(g26, start_g26);
+set_start(g27, start_g27);
+set_start(g28, start_g28);
+set_start(g29, start_g29);
+set_start(g30, start_g30);
+set_start(g31, start_g31);
+set_start(g32, start_g32);
+set_start(g33, start_g33);
+set_start(g34, start_g34);
+set_start(g35, start_g35);
+set_start(g36, start_g36);
+set_start(g37, start_g37);
+set_start(g38, start_g38);
+set_start(g39, start_g39);
+set_start(g40, start_g40);
+set_start(mystery_box1, start_mystery_box1);
+set_start(mystery_box2, start_mystery_box2);
+set_start(mystery_box3, start_mystery_box3);
+set_start(mystery_box4, start_mystery_box4);
+set_start(mystery_box5, start_mystery_box5);
+set_start(mystery_box6, start_mystery_box6);
+set_start(mystery_box7, start_mystery_box7);
+set_start(mystery_box8, start_mystery_box8);
+
+set_start(barrier1,start_barrier1);
+set_start(mario1, start_player1);
+set_update(mario1, update_player1);
+set_start(mario2, start_player2);
+set_update(mario2, update_player2);
+on_collision_enter(mario1, marioOnCollisionEnter);
+on_collision_enter(mario2, marioOnCollisionEnter);
